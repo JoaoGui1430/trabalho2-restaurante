@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.database import engine
-from app.routers import categorias, garcons, mesas, pedidos, produtos
+from app.routers import categorias, garcons, mesas, pedidos, produtos, relatorios
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ app.include_router(produtos.router)
 app.include_router(mesas.router)
 app.include_router(garcons.router)
 app.include_router(pedidos.router)
+app.include_router(relatorios.router)
 
 
 @app.get("/", tags=["Início"])

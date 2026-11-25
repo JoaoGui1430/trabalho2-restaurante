@@ -21,7 +21,7 @@ As etapas 1 a 10 estão implementadas. A estrutura inicial é criada pelo Alembi
 | F8, paginação | Implementado em `GET /pedidos/` com `offset` e `limit`, aplicados na consulta ao banco. |
 | F9, filtros | Implementado em `GET /pedidos/` com seis critérios combináveis, aplicados na consulta ao banco. |
 | F10, três consultas relacionadas | Implementado em `/categorias/{id}/produtos`, `/mesas/{id}/pedidos` e `/pedidos/{id}/itens`. |
-| F11, duas consultas complexas | Pendente, etapa 13. |
+| F11, duas consultas complexas | Implementado em `/relatorios/produtos-mais-vendidos` e `/relatorios/faturamento-diario`. |
 | F12, estatísticas | Pendente, etapa 13. |
 | F13, regras de negócio | Implementadas no fluxo de venda e atendimento. |
 | F14, evolução com Alembic | Parcial. A versão inicial está pronta. A evolução estrutural será feita na etapa 14. |
@@ -170,6 +170,8 @@ O povoamento automático será acrescentado na etapa 15. Nesta versão, os regis
 | `/pedidos/{id}/itens/{item_id}/iniciar-preparo` | POST inicia o preparo. |
 | `/pedidos/{id}/itens/{item_id}/concluir-preparo` | POST marca o item como pronto. |
 | `/pedidos/{id}/finalizar` | POST fecha a conta e encerra o atendimento. |
+| `/relatorios/produtos-mais-vendidos` | GET ranking de produtos por quantidade vendida no período. |
+| `/relatorios/faturamento-diario` | GET faturamento e quantidade de contas por dia no período. |
 
 As listagens retornam os registros ordenados, e a de pedidos é paginada e filtrável. Os filtros de `GET /pedidos/` podem ser combinados entre si e com a paginação, e o `total` considera os filtros aplicados.
 
@@ -181,7 +183,16 @@ As listagens retornam os registros ordenados, e a de pedidos é paginada e filtr
 | `modalidade` | `mesa` ou `retirada`. |
 | `data_inicio`, `data_fim` | Período de criação, datas inclusivas no formato AAAA-MM-DD. |
 
-Os dois relatórios complexos e as estatísticas estão previstos na etapa 13.
+## Relatórios
+
+Os dois relatórios usam apenas contas finalizadas. Pedidos abertos e cancelados ficam de fora. O período é obrigatório (`data_inicio` e `data_fim`, inclusivas, AAAA-MM-DD, máximo de 366 dias) e é comparado com a data de fechamento da conta.
+
+| Relatório | Cálculo |
+|---|---|
+| `produtos-mais-vendidos` | Soma a quantidade por produto e o valor pelos preços aplicados em cada linha. Ordena da maior para a menor quantidade, desempatando por nome. `limite` define o tamanho do ranking, de 1 a 100, com padrão 10. |
+| `faturamento-diario` | Soma o total dos fechamentos por dia, sem passar pelos itens, para não multiplicar valores. Dias sem vendas aparecem com zero. |
+
+As estatísticas gerais estão previstas na etapa 13.
 
 ## Regras e função específica do tema
 

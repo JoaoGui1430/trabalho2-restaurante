@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -425,3 +425,20 @@ class PedidoPublicDetalhado(PedidoPublic):
     itens: list[ItemPedidoPublicDetalhado]
     fechamento: FechamentoContaPublic | None
     total_centavos: int
+
+
+# Relatórios
+
+
+class ProdutoRanking(SQLModel):
+    posicao: int
+    produto_id: int
+    nome: str
+    quantidade_vendida: int
+    faturamento_centavos: int
+
+
+class FaturamentoDia(SQLModel):
+    data: date
+    quantidade_contas: int
+    faturamento_centavos: int
