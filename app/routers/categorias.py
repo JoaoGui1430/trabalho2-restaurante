@@ -2,7 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Response
 from sqlmodel import Session, select
 
 from app.database import get_session, get_write_session
-from app.models import Categoria, CategoriaCreate, CategoriaPublic, CategoriaUpdate
+from app.models import (
+    Categoria,
+    CategoriaCreate,
+    CategoriaPublic,
+    CategoriaUpdate,
+    Produto,
+    ProdutoPublic,
+)
 
 router = APIRouter(prefix="/categorias", tags=["Categorias"])
 
@@ -33,6 +40,23 @@ def buscar_categoria(
     if categoria is None:
         raise HTTPException(status_code=404, detail="Categoria não encontrada.")
     return categoria
+
+
+@router.get("/{categoria_id}/produtos", response_model=list[ProdutoPublic])
+def listar_produtos_da_categoria(
+    categoria_id: int = Path(gt=0),
+    session: Session = Depends(get_session),
+):
+    # Relacionamento 1:N: os produtos são os registros que apontam para a categoria.
+    if session.get(Categoria, categoria_id) is None:
+        raise HTTPException(status_code=404, detail="Categoria não encontrada.")
+    consulta = (
+        select(Produto)
+        .join(Categoria, Produto.categoria_id == Categoria.id)
+        .where(Categoria.id == categoria_id)
+        .order_by(Produto.nome, Produto.id)
+    )
+    return session.exec(consulta).all()
 
 
 @router.patch("/{categoria_id}", response_model=CategoriaPublic)

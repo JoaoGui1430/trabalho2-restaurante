@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from sqlalchemy import func
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.database import get_session, get_write_session
@@ -19,7 +20,6 @@ from app.models import (
     Pedido,
     PedidoCreate,
     PedidoPagina,
-    PedidoPublic,
     PedidoPublicDetalhado,
     PedidoUpdate,
     Produto,
@@ -170,6 +170,22 @@ def consultar_pedido(pedido_id: IdPositivo, session: Session = Depends(get_sessi
     if pedido is None:
         raise HTTPException(status_code=404, detail="Pedido não encontrado.")
     return pedido
+
+
+@router.get("/{pedido_id}/itens", response_model=list[ItemPedidoPublicDetalhado])
+def listar_itens_do_pedido(
+    pedido_id: IdPositivo, session: Session = Depends(get_session)
+):
+    # Relacionamento N:N por ItemPedido: cada linha traz o produto vendido.
+    if session.get(Pedido, pedido_id) is None:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado.")
+    consulta = (
+        select(ItemPedido)
+        .where(ItemPedido.pedido_id == pedido_id)
+        .options(selectinload(ItemPedido.produto))
+        .order_by(ItemPedido.id)
+    )
+    return session.exec(consulta).all()
 
 
 @router.patch("/{pedido_id}", response_model=PedidoPublicDetalhado)

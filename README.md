@@ -20,7 +20,7 @@ As etapas 1 a 10 estão implementadas. A estrutura inicial é criada pelo Alembi
 | F7, CRUD routers | Cinco routers de recursos principais registrados. |
 | F8, paginação | Implementado em `GET /pedidos/` com `offset` e `limit`, aplicados na consulta ao banco. |
 | F9, filtros | Implementado em `GET /pedidos/` com seis critérios combináveis, aplicados na consulta ao banco. |
-| F10, três consultas relacionadas | Pendente, etapa 12. |
+| F10, três consultas relacionadas | Implementado em `/categorias/{id}/produtos`, `/mesas/{id}/pedidos` e `/pedidos/{id}/itens`. |
 | F11, duas consultas complexas | Pendente, etapa 13. |
 | F12, estatísticas | Pendente, etapa 13. |
 | F13, regras de negócio | Implementadas no fluxo de venda e atendimento. |
@@ -155,15 +155,17 @@ O povoamento automático será acrescentado na etapa 15. Nesta versão, os regis
 |---|---|
 | `/categorias/` | POST cadastra e GET lista. |
 | `/categorias/{id}` | GET consulta, PATCH atualiza e DELETE desativa. |
+| `/categorias/{id}/produtos` | GET lista os produtos da categoria. |
 | `/produtos/` | POST cadastra e GET lista. |
 | `/produtos/{id}` | GET consulta, PATCH atualiza e DELETE desativa. |
 | `/mesas/` | POST cadastra e GET lista. |
 | `/mesas/{id}` | GET consulta, PATCH atualiza e DELETE desativa. |
+| `/mesas/{id}/pedidos` | GET lista o histórico de pedidos da mesa, com garçom, itens e produtos. |
 | `/garcons/` | POST cadastra e GET lista. |
 | `/garcons/{id}` | GET consulta, PATCH atualiza e DELETE desativa. |
 | `/pedidos/` | POST abre e GET lista com paginação (`offset`, padrão 0, e `limit`, padrão 20, máximo 100). A resposta traz `total`, `offset`, `limit` e `itens`. |
 | `/pedidos/{id}` | GET detalha, PATCH troca o responsável e DELETE cancela. |
-| `/pedidos/{id}/itens` | POST inclui produto e quantidade. |
+| `/pedidos/{id}/itens` | POST inclui produto e quantidade, e GET lista os itens com os dados dos produtos. |
 | `/pedidos/{id}/itens/{item_id}` | PATCH reduz quantidade e DELETE remove item elegível. |
 | `/pedidos/{id}/itens/{item_id}/iniciar-preparo` | POST inicia o preparo. |
 | `/pedidos/{id}/itens/{item_id}/concluir-preparo` | POST marca o item como pronto. |
@@ -179,7 +181,7 @@ As listagens retornam os registros ordenados, e a de pedidos é paginada e filtr
 | `modalidade` | `mesa` ou `retirada`. |
 | `data_inicio`, `data_fim` | Período de criação, datas inclusivas no formato AAAA-MM-DD. |
 
-As três consultas relacionadas específicas, os dois relatórios complexos e as estatísticas estão previstos nas etapas 12 e 13.
+Os dois relatórios complexos e as estatísticas estão previstos na etapa 13.
 
 ## Regras e função específica do tema
 

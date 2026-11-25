@@ -1,8 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, Path, Response
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from app.database import get_session, get_write_session
-from app.models import Mesa, MesaCreate, MesaPublic, MesaUpdate, Pedido, StatusPedido
+from app.models import (
+    ItemPedido,
+    Mesa,
+    MesaCreate,
+    MesaPublic,
+    MesaUpdate,
+    Pedido,
+    PedidoPublicDetalhado,
+    StatusPedido,
+)
 
 router = APIRouter(prefix="/mesas", tags=["Mesas"])
 
@@ -47,6 +57,28 @@ def buscar_mesa(
     if mesa is None:
         raise HTTPException(status_code=404, detail="Mesa não encontrada.")
     return mesa
+
+
+@router.get("/{mesa_id}/pedidos", response_model=list[PedidoPublicDetalhado])
+def listar_pedidos_da_mesa(
+    mesa_id: int = Path(gt=0),
+    session: Session = Depends(get_session),
+):
+    # Histórico da mesa, do mais recente ao mais antigo, com garçom, itens e produtos.
+    if session.get(Mesa, mesa_id) is None:
+        raise HTTPException(status_code=404, detail="Mesa não encontrada.")
+    consulta = (
+        select(Pedido)
+        .where(Pedido.mesa_id == mesa_id)
+        .options(
+            selectinload(Pedido.mesa),
+            selectinload(Pedido.garcom),
+            selectinload(Pedido.itens).selectinload(ItemPedido.produto),
+            selectinload(Pedido.fechamento),
+        )
+        .order_by(Pedido.criado_em.desc(), Pedido.id.desc())
+    )
+    return session.exec(consulta).all()
 
 
 @router.patch("/{mesa_id}", response_model=MesaPublic)
