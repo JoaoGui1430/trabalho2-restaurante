@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
@@ -107,12 +107,55 @@ def criar_pedido(
 def listar_pedidos(
     offset: int = Query(0, ge=0, description="Quantidade de registros a pular."),
     limit: int = Query(20, ge=1, le=100, description="Máximo de registros retornados."),
+    status: StatusPedido | None = Query(None, description="Situação do pedido."),
+    mesa_id: int | None = Query(None, gt=0, description="Pedidos da mesa informada."),
+    produto_id: int | None = Query(
+        None, gt=0, description="Pedidos que contêm o produto informado."
+    ),
+    modalidade: ModalidadePedido | None = Query(None, description="mesa ou retirada."),
+    data_inicio: date | None = Query(
+        None, description="Criados a partir desta data, inclusive (AAAA-MM-DD)."
+    ),
+    data_fim: date | None = Query(
+        None, description="Criados até esta data, inclusive (AAAA-MM-DD)."
+    ),
     session: Session = Depends(get_session),
 ):
-    total = session.exec(select(func.count()).select_from(Pedido)).one()
+    if data_inicio and data_fim and data_fim < data_inicio:
+        raise HTTPException(
+            status_code=422, detail="data_fim não pode ser anterior a data_inicio."
+        )
+
+    # Todos os filtros entram no SQL e valem para a contagem e para a página.
+    filtros = []
+    if status is not None:
+        filtros.append(Pedido.status == status)
+    if mesa_id is not None:
+        filtros.append(Pedido.mesa_id == mesa_id)
+    if modalidade is not None:
+        filtros.append(Pedido.modalidade == modalidade)
+    if data_inicio is not None:
+        filtros.append(Pedido.criado_em >= datetime.combine(data_inicio, time.min))
+    if data_fim is not None:
+        filtros.append(
+            Pedido.criado_em < datetime.combine(data_fim + timedelta(days=1), time.min)
+        )
+    if produto_id is not None:
+        # EXISTS evita repetir o pedido quando há várias linhas do mesmo produto.
+        filtros.append(
+            select(ItemPedido.id)
+            .where(
+                ItemPedido.pedido_id == Pedido.id,
+                ItemPedido.produto_id == produto_id,
+            )
+            .exists()
+        )
+
+    total = session.exec(select(func.count()).select_from(Pedido).where(*filtros)).one()
     # O id desempata criado_em e mantém a ordem estável entre as páginas.
     consulta = (
         select(Pedido)
+        .where(*filtros)
         .order_by(Pedido.criado_em.desc(), Pedido.id.desc())
         .offset(offset)
         .limit(limit)

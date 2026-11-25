@@ -19,7 +19,7 @@ As etapas 1 a 10 estão implementadas. A estrutura inicial é criada pelo Alembi
 | F6, relacionamentos | 1:1, 1:N e N:N mapeados e usados nas operações. |
 | F7, CRUD routers | Cinco routers de recursos principais registrados. |
 | F8, paginação | Implementado em `GET /pedidos/` com `offset` e `limit`, aplicados na consulta ao banco. |
-| F9, filtros | Pendente, etapa 11. |
+| F9, filtros | Implementado em `GET /pedidos/` com seis critérios combináveis, aplicados na consulta ao banco. |
 | F10, três consultas relacionadas | Pendente, etapa 12. |
 | F11, duas consultas complexas | Pendente, etapa 13. |
 | F12, estatísticas | Pendente, etapa 13. |
@@ -169,7 +169,17 @@ O povoamento automático será acrescentado na etapa 15. Nesta versão, os regis
 | `/pedidos/{id}/itens/{item_id}/concluir-preparo` | POST marca o item como pronto. |
 | `/pedidos/{id}/finalizar` | POST fecha a conta e encerra o atendimento. |
 
-As listagens retornam os registros ordenados, e a de pedidos é paginada. Os filtros serão acrescentados na etapa 11. As três consultas relacionadas específicas, os dois relatórios complexos e as estatísticas estão previstos nas etapas 12 e 13.
+As listagens retornam os registros ordenados, e a de pedidos é paginada e filtrável. Os filtros de `GET /pedidos/` podem ser combinados entre si e com a paginação, e o `total` considera os filtros aplicados.
+
+| Filtro | Efeito |
+|---|---|
+| `status` | `aberto`, `finalizado` ou `cancelado`. |
+| `mesa_id` | Pedidos da mesa informada. |
+| `produto_id` | Pedidos com ao menos uma linha do produto, sem repetir o pedido. |
+| `modalidade` | `mesa` ou `retirada`. |
+| `data_inicio`, `data_fim` | Período de criação, datas inclusivas no formato AAAA-MM-DD. |
+
+As três consultas relacionadas específicas, os dois relatórios complexos e as estatísticas estão previstos nas etapas 12 e 13.
 
 ## Regras e função específica do tema
 
