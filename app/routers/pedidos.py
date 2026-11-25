@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.database import get_session, get_write_session
@@ -17,6 +18,7 @@ from app.models import (
     ModalidadePedido,
     Pedido,
     PedidoCreate,
+    PedidoPagina,
     PedidoPublic,
     PedidoPublicDetalhado,
     PedidoUpdate,
@@ -101,10 +103,22 @@ def criar_pedido(
     return pedido
 
 
-@router.get("/", response_model=list[PedidoPublic])
-def listar_pedidos(session: Session = Depends(get_session)):
-    consulta = select(Pedido).order_by(Pedido.criado_em.desc(), Pedido.id.desc())
-    return session.exec(consulta).all()
+@router.get("/", response_model=PedidoPagina)
+def listar_pedidos(
+    offset: int = Query(0, ge=0, description="Quantidade de registros a pular."),
+    limit: int = Query(20, ge=1, le=100, description="Máximo de registros retornados."),
+    session: Session = Depends(get_session),
+):
+    total = session.exec(select(func.count()).select_from(Pedido)).one()
+    # O id desempata criado_em e mantém a ordem estável entre as páginas.
+    consulta = (
+        select(Pedido)
+        .order_by(Pedido.criado_em.desc(), Pedido.id.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    itens = session.exec(consulta).all()
+    return PedidoPagina(total=total, offset=offset, limit=limit, itens=itens)
 
 
 @router.get("/{pedido_id}", response_model=PedidoPublicDetalhado)

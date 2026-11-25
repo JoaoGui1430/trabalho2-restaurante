@@ -312,6 +312,13 @@ class PedidoPublic(PedidoBase):
     encerrado_em: datetime | None
 
 
+class PedidoPagina(SQLModel):
+    total: int
+    offset: int
+    limit: int
+    itens: list[PedidoPublic]
+
+
 class PedidoUpdate(DadosValidados):
     garcom_id: int | None = Field(default=None, gt=0)
 

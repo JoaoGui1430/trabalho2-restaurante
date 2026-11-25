@@ -1,8 +1,7 @@
 # Sistema de Restaurante
 
 Trabalho Prático 2 de Desenvolvimento de Software para Persistência, UFC Quixadá, 2026.2. Tema 8, Sistema de Restaurante.
-
-Integrante identificado até o momento, João Guilherme Gadelha Abreu de Souza. Os demais integrantes devem ser incluídos antes da entrega.
+João Guilherme Gadelha Abreu de Souza e Pedro Henrique Sampaio de Sousa.
 
 ## Objetivo e estado atual
 
@@ -19,7 +18,7 @@ As etapas 1 a 10 estão implementadas. A estrutura inicial é criada pelo Alembi
 | F5, exclusão/desativação | Cadastros são desativados, itens pendentes podem ser removidos e pedidos podem ser cancelados. |
 | F6, relacionamentos | 1:1, 1:N e N:N mapeados e usados nas operações. |
 | F7, CRUD routers | Cinco routers de recursos principais registrados. |
-| F8, paginação | Pendente, etapa 11. |
+| F8, paginação | Implementado em `GET /pedidos/` com `offset` e `limit`, aplicados na consulta ao banco. |
 | F9, filtros | Pendente, etapa 11. |
 | F10, três consultas relacionadas | Pendente, etapa 12. |
 | F11, duas consultas complexas | Pendente, etapa 13. |
@@ -162,7 +161,7 @@ O povoamento automático será acrescentado na etapa 15. Nesta versão, os regis
 | `/mesas/{id}` | GET consulta, PATCH atualiza e DELETE desativa. |
 | `/garcons/` | POST cadastra e GET lista. |
 | `/garcons/{id}` | GET consulta, PATCH atualiza e DELETE desativa. |
-| `/pedidos/` | POST abre e GET lista. |
+| `/pedidos/` | POST abre e GET lista com paginação (`offset`, padrão 0, e `limit`, padrão 20, máximo 100). A resposta traz `total`, `offset`, `limit` e `itens`. |
 | `/pedidos/{id}` | GET detalha, PATCH troca o responsável e DELETE cancela. |
 | `/pedidos/{id}/itens` | POST inclui produto e quantidade. |
 | `/pedidos/{id}/itens/{item_id}` | PATCH reduz quantidade e DELETE remove item elegível. |
@@ -170,7 +169,7 @@ O povoamento automático será acrescentado na etapa 15. Nesta versão, os regis
 | `/pedidos/{id}/itens/{item_id}/concluir-preparo` | POST marca o item como pronto. |
 | `/pedidos/{id}/finalizar` | POST fecha a conta e encerra o atendimento. |
 
-As listagens atuais retornam os registros ordenados. Paginação e filtros serão acrescentados na etapa 11. As três consultas relacionadas específicas, os dois relatórios complexos e as estatísticas estão previstos nas etapas 12 e 13.
+As listagens retornam os registros ordenados, e a de pedidos é paginada. Os filtros serão acrescentados na etapa 11. As três consultas relacionadas específicas, os dois relatórios complexos e as estatísticas estão previstos nas etapas 12 e 13.
 
 ## Regras e função específica do tema
 
