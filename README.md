@@ -95,6 +95,8 @@ Chaves estrangeiras restritivas preservam referências. Há unicidade para nome 
 
 Valores monetários usam centavos inteiros. Quantidades variam de 1 a 10.000, capacidade de mesa de 1 a 100, e preço unitário positivo até 2.147.483.647 centavos. Textos têm limites definidos nos schemas. Datas são registradas em UTC sem informação de fuso na coluna, de forma uniforme nos dois bancos.
 
+IDs recebidos pela API vão de 1 a 2.147.483.647, compatíveis com as chaves INTEGER do PostgreSQL. O offset vai de zero a 9.223.372.036.854.775.807. Valores acima desses limites recebem HTTP 422.
+
 ## Instalação
 
 Abra o terminal nesta pasta, onde estão `requirements.txt` e `alembic.ini`.
@@ -133,6 +135,8 @@ $env:DATABASE_URL = 'sqlite:///./restaurante.db'
 
 Quando `DATABASE_URL` está ausente no ambiente e no `.env`, a aplicação também usa esse SQLite local. As chaves estrangeiras são habilitadas por conexão. Escritas usam transações imediatas para serializar alterações concorrentes.
 
+A reversão da migração `0002` usa `ALTER TABLE DROP COLUMN` e requer SQLite 3.35 ou superior. A conferência local foi realizada com SQLite 3.50.4 e PostgreSQL 18.6.
+
 Para voltar à configuração do `.env` no terminal, execute o comando abaixo e reinicie a API.
 
 ```powershell
@@ -167,6 +171,8 @@ Com a estrutura aplicada (`alembic upgrade head`), carregue os dados de demonstr
 ```powershell
 .\.venv\Scripts\python.exe -m app.povoamento
 ```
+
+O povoamento preserva a situação dos cadastros existentes. Para criar os pedidos de demonstração, precisa de ao menos duas mesas ativas, um garçom ativo e um produto ativo e disponível em categoria ativa. Se esses cadastros não estiverem disponíveis, retorna uma mensagem de orientação e reverte a execução.
 
 | Entidade | Dados criados |
 |---|---|

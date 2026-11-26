@@ -159,9 +159,20 @@ def povoar_pedidos(session: Session) -> dict[str, int]:
     if session.exec(select(Pedido.id).limit(1)).first() is not None:
         return {}
 
-    produtos = [p for p in session.exec(select(Produto).order_by(Produto.id)).all() if p.disponivel]
+    produtos = session.exec(
+        select(Produto)
+        .join(Categoria, Produto.categoria_id == Categoria.id)
+        .where(Produto.ativo, Produto.disponivel, Categoria.ativo)
+        .order_by(Produto.id)
+    ).all()
     mesas = session.exec(select(Mesa).where(Mesa.ativo).order_by(Mesa.numero)).all()
     garcons = session.exec(select(Garcom).where(Garcom.ativo).order_by(Garcom.matricula)).all()
+    if not produtos:
+        raise ValueError("Disponibilize ao menos um produto ativo em uma categoria ativa.")
+    if len(mesas) < 2:
+        raise ValueError("Ative ao menos duas mesas para os atendimentos de demonstração.")
+    if not garcons:
+        raise ValueError("Ative ao menos um garçom para os atendimentos de demonstração.")
     agora = agora_utc()
     criados = {"finalizados": 0, "cancelados": 0, "abertos": 0}
 
@@ -199,13 +210,14 @@ def povoar_pedidos(session: Session) -> dict[str, int]:
     # Pedidos cancelados: só podem ter itens ainda pendentes (ou nenhum).
     for i in range(TOTAL_CANCELADOS):
         criado_em = agora - timedelta(days=2 + i, hours=1)
-        pedido = novo_pedido(ModalidadePedido.MESA, mesas[i], garcons[i % len(garcons)], criado_em)
+        pedido = novo_pedido(ModalidadePedido.MESA, mesas[i % len(mesas)], garcons[i % len(garcons)], criado_em)
         pedido.status = StatusPedido.CANCELADO
         pedido.encerrado_em = criado_em + timedelta(minutes=10)
         session.add(pedido)
         session.flush()
         if i > 0:
-            adicionar_item(session, pedido, produtos[i], 2, produtos[i].preco_centavos, StatusPreparo.PENDENTE)
+            produto = produtos[i % len(produtos)]
+            adicionar_item(session, pedido, produto, 2, produto.preco_centavos, StatusPreparo.PENDENTE)
         criados["cancelados"] += 1
 
     # Atendimentos em andamento: duas mesas ocupadas e uma retirada.
@@ -233,16 +245,19 @@ def povoar_pedidos(session: Session) -> dict[str, int]:
 
 
 def main() -> int:
-    colunas = {c["name"] for c in inspect(engine).get_columns("pedido")} if inspect(engine).has_table("pedido") else set()
-    if "observacao" not in colunas:
-        print("O banco não está na versão atual. Execute `python -m alembic upgrade head` antes.")
-        return 1
-
     try:
+        inspetor = inspect(engine)
+        colunas = {c["name"] for c in inspetor.get_columns("pedido")} if inspetor.has_table("pedido") else set()
+        if "observacao" not in colunas:
+            print("O banco não está na versão atual. Execute `python -m alembic upgrade head` antes.")
+            return 1
         with Session(engine) as session:
             cadastros = povoar_cadastros(session)
             pedidos = povoar_pedidos(session)
             session.commit()
+    except ValueError as erro:
+        print(f"Não foi possível povoar o banco: {erro} Nada foi gravado.")
+        return 1
     except SQLAlchemyError as erro:
         print(f"Falha ao povoar o banco: {type(erro).__name__}. Nada foi gravado.")
         return 1

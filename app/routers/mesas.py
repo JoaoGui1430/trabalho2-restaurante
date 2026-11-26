@@ -4,6 +4,7 @@ from sqlmodel import Session, select
 
 from app.database import get_session, get_write_session
 from app.models import (
+    MAXIMO_ID,
     ItemPedido,
     Mesa,
     MesaCreate,
@@ -50,7 +51,7 @@ def listar_mesas(session: Session = Depends(get_session)):
 
 @router.get("/{mesa_id}", response_model=MesaPublic)
 def buscar_mesa(
-    mesa_id: int = Path(gt=0),
+    mesa_id: int = Path(gt=0, le=MAXIMO_ID),
     session: Session = Depends(get_session),
 ):
     mesa = session.get(Mesa, mesa_id)
@@ -61,7 +62,7 @@ def buscar_mesa(
 
 @router.get("/{mesa_id}/pedidos", response_model=list[PedidoPublicDetalhado])
 def listar_pedidos_da_mesa(
-    mesa_id: int = Path(gt=0),
+    mesa_id: int = Path(gt=0, le=MAXIMO_ID),
     session: Session = Depends(get_session),
 ):
     # Histórico da mesa, do mais recente ao mais antigo, com garçom, itens e produtos.
@@ -84,7 +85,7 @@ def listar_pedidos_da_mesa(
 @router.patch("/{mesa_id}", response_model=MesaPublic)
 def atualizar_mesa(
     dados: MesaUpdate,
-    mesa_id: int = Path(gt=0),
+    mesa_id: int = Path(gt=0, le=MAXIMO_ID),
     session: Session = Depends(get_write_session),
 ):
     mesa = session.exec(
@@ -110,7 +111,7 @@ def atualizar_mesa(
 
 @router.delete("/{mesa_id}", status_code=204)
 def desativar_mesa(
-    mesa_id: int = Path(gt=0),
+    mesa_id: int = Path(gt=0, le=MAXIMO_ID),
     session: Session = Depends(get_write_session),
 ):
     mesa = session.exec(

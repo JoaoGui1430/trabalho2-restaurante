@@ -2,7 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Response
 from sqlmodel import Session, select
 
 from app.database import get_session, get_write_session
-from app.models import Categoria, Produto, ProdutoCreate, ProdutoPublic, ProdutoUpdate
+from app.models import (
+    MAXIMO_ID,
+    Categoria,
+    Produto,
+    ProdutoCreate,
+    ProdutoPublic,
+    ProdutoUpdate,
+)
 
 router = APIRouter(prefix="/produtos", tags=["Produtos"])
 
@@ -39,7 +46,7 @@ def listar_produtos(session: Session = Depends(get_session)):
 
 @router.get("/{produto_id}", response_model=ProdutoPublic)
 def buscar_produto(
-    produto_id: int = Path(gt=0),
+    produto_id: int = Path(gt=0, le=MAXIMO_ID),
     session: Session = Depends(get_session),
 ):
     produto = session.get(Produto, produto_id)
@@ -51,7 +58,7 @@ def buscar_produto(
 @router.patch("/{produto_id}", response_model=ProdutoPublic)
 def atualizar_produto(
     dados: ProdutoUpdate,
-    produto_id: int = Path(gt=0),
+    produto_id: int = Path(gt=0, le=MAXIMO_ID),
     session: Session = Depends(get_write_session),
 ):
     produto = session.exec(
@@ -78,7 +85,7 @@ def atualizar_produto(
 
 @router.delete("/{produto_id}", status_code=204)
 def desativar_produto(
-    produto_id: int = Path(gt=0),
+    produto_id: int = Path(gt=0, le=MAXIMO_ID),
     session: Session = Depends(get_write_session),
 ):
     produto = session.exec(

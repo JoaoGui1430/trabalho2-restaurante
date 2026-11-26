@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 
 from app.database import get_session, get_write_session
 from app.models import (
+    MAXIMO_ID,
     Categoria,
     CategoriaCreate,
     CategoriaPublic,
@@ -33,7 +34,7 @@ def listar_categorias(session: Session = Depends(get_session)):
 
 @router.get("/{categoria_id}", response_model=CategoriaPublic)
 def buscar_categoria(
-    categoria_id: int = Path(gt=0),
+    categoria_id: int = Path(gt=0, le=MAXIMO_ID),
     session: Session = Depends(get_session),
 ):
     categoria = session.get(Categoria, categoria_id)
@@ -44,7 +45,7 @@ def buscar_categoria(
 
 @router.get("/{categoria_id}/produtos", response_model=list[ProdutoPublic])
 def listar_produtos_da_categoria(
-    categoria_id: int = Path(gt=0),
+    categoria_id: int = Path(gt=0, le=MAXIMO_ID),
     session: Session = Depends(get_session),
 ):
     # Relacionamento 1:N: os produtos são os registros que apontam para a categoria.
@@ -62,7 +63,7 @@ def listar_produtos_da_categoria(
 @router.patch("/{categoria_id}", response_model=CategoriaPublic)
 def atualizar_categoria(
     dados: CategoriaUpdate,
-    categoria_id: int = Path(gt=0),
+    categoria_id: int = Path(gt=0, le=MAXIMO_ID),
     session: Session = Depends(get_write_session),
 ):
     categoria = session.exec(
@@ -86,7 +87,7 @@ def atualizar_categoria(
 
 @router.delete("/{categoria_id}", status_code=204)
 def desativar_categoria(
-    categoria_id: int = Path(gt=0),
+    categoria_id: int = Path(gt=0, le=MAXIMO_ID),
     session: Session = Depends(get_write_session),
 ):
     categoria = session.exec(

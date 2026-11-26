@@ -43,8 +43,7 @@ class Periodo:
     def filtros(self):
         return [
             FechamentoConta.fechado_em >= datetime.combine(self.data_inicio, time.min),
-            FechamentoConta.fechado_em
-            < datetime.combine(self.data_fim + timedelta(days=1), time.min),
+            FechamentoConta.fechado_em <= datetime.combine(self.data_fim, time.max),
         ]
 
 
@@ -103,13 +102,13 @@ def faturamento_diario(
 
     # Dias sem vendas aparecem com zero para o período ficar completo.
     resultado = []
-    atual = periodo.data_inicio
-    while atual <= periodo.data_fim:
+    total_dias = (periodo.data_fim - periodo.data_inicio).days + 1
+    for deslocamento in range(total_dias):
+        atual = periodo.data_inicio + timedelta(days=deslocamento)
         contas, total = por_dia.get(atual, (0, 0))
         resultado.append(
             FaturamentoDia(
                 data=atual, quantidade_contas=contas, faturamento_centavos=total
             )
         )
-        atual += timedelta(days=1)
     return resultado

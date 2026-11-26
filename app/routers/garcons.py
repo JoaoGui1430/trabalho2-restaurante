@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 
 from app.database import get_session, get_write_session
 from app.models import (
+    MAXIMO_ID,
     Garcom,
     GarcomCreate,
     GarcomPublic,
@@ -47,7 +48,7 @@ def listar_garcons(session: Session = Depends(get_session)):
 
 @router.get("/{garcom_id}", response_model=GarcomPublic)
 def buscar_garcom(
-    garcom_id: int = Path(gt=0),
+    garcom_id: int = Path(gt=0, le=MAXIMO_ID),
     session: Session = Depends(get_session),
 ):
     garcom = session.get(Garcom, garcom_id)
@@ -59,7 +60,7 @@ def buscar_garcom(
 @router.patch("/{garcom_id}", response_model=GarcomPublic)
 def atualizar_garcom(
     dados: GarcomUpdate,
-    garcom_id: int = Path(gt=0),
+    garcom_id: int = Path(gt=0, le=MAXIMO_ID),
     session: Session = Depends(get_write_session),
 ):
     garcom = session.exec(
@@ -85,7 +86,7 @@ def atualizar_garcom(
 
 @router.delete("/{garcom_id}", status_code=204)
 def desativar_garcom(
-    garcom_id: int = Path(gt=0),
+    garcom_id: int = Path(gt=0, le=MAXIMO_ID),
     session: Session = Depends(get_write_session),
 ):
     garcom = session.exec(

@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
@@ -8,6 +8,8 @@ from sqlmodel import Session, select
 
 from app.database import get_session, get_write_session
 from app.models import (
+    MAXIMO_ID,
+    MAXIMO_INTEIRO_SQL,
     Categoria,
     FechamentoConta,
     Garcom,
@@ -28,7 +30,7 @@ from app.models import (
 )
 
 router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
-IdPositivo = Annotated[int, Path(gt=0)]
+IdPositivo = Annotated[int, Path(gt=0, le=MAXIMO_ID)]
 
 
 def buscar_garcom_ativo(garcom_id: int, session: Session) -> Garcom:
@@ -105,12 +107,19 @@ def criar_pedido(
 
 @router.get("/", response_model=PedidoPagina)
 def listar_pedidos(
-    offset: int = Query(0, ge=0, description="Quantidade de registros a pular."),
+    offset: int = Query(
+        0, ge=0, le=MAXIMO_INTEIRO_SQL, description="Quantidade de registros a pular."
+    ),
     limit: int = Query(20, ge=1, le=100, description="Máximo de registros retornados."),
     status: StatusPedido | None = Query(None, description="Situação do pedido."),
-    mesa_id: int | None = Query(None, gt=0, description="Pedidos da mesa informada."),
+    mesa_id: int | None = Query(
+        None, gt=0, le=MAXIMO_ID, description="Pedidos da mesa informada."
+    ),
     produto_id: int | None = Query(
-        None, gt=0, description="Pedidos que contêm o produto informado."
+        None,
+        gt=0,
+        le=MAXIMO_ID,
+        description="Pedidos que contêm o produto informado.",
     ),
     modalidade: ModalidadePedido | None = Query(None, description="mesa ou retirada."),
     data_inicio: date | None = Query(
@@ -137,9 +146,7 @@ def listar_pedidos(
     if data_inicio is not None:
         filtros.append(Pedido.criado_em >= datetime.combine(data_inicio, time.min))
     if data_fim is not None:
-        filtros.append(
-            Pedido.criado_em < datetime.combine(data_fim + timedelta(days=1), time.min)
-        )
+        filtros.append(Pedido.criado_em <= datetime.combine(data_fim, time.max))
     if produto_id is not None:
         # EXISTS evita repetir o pedido quando há várias linhas do mesmo produto.
         filtros.append(

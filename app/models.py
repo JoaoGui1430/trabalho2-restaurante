@@ -6,6 +6,9 @@ from pydantic import ConfigDict, StrictInt, field_validator, model_validator
 from sqlalchemy import BigInteger, CheckConstraint, Enum as SAEnum, Index, text
 from sqlmodel import Field, Relationship, SQLModel
 
+MAXIMO_ID = 2_147_483_647
+MAXIMO_INTEIRO_SQL = 9_223_372_036_854_775_807
+
 
 class ModalidadePedido(str, Enum):
     MESA = "mesa"
@@ -80,7 +83,11 @@ class ProdutoBase(DadosValidados):
     disponivel: bool = True
     ativo: bool = True
     categoria_id: int = Field(
-        gt=0, foreign_key="categoria.id", ondelete="RESTRICT", index=True
+        gt=0,
+        le=MAXIMO_ID,
+        foreign_key="categoria.id",
+        ondelete="RESTRICT",
+        index=True,
     )
 
 
@@ -112,7 +119,7 @@ class ProdutoUpdate(DadosValidados):
     preco_centavos: StrictInt | None = Field(default=None, gt=0, le=2_147_483_647)
     disponivel: bool | None = None
     ativo: bool | None = None
-    categoria_id: int | None = Field(default=None, gt=0)
+    categoria_id: int | None = Field(default=None, gt=0, le=MAXIMO_ID)
 
     @field_validator(
         "nome", "preco_centavos", "disponivel", "ativo", "categoria_id", mode="before"
@@ -226,12 +233,17 @@ class PedidoBase(DadosValidados):
     mesa_id: int | None = Field(
         default=None,
         gt=0,
+        le=MAXIMO_ID,
         foreign_key="mesa.id",
         ondelete="RESTRICT",
         index=True,
     )
     garcom_id: int = Field(
-        gt=0, foreign_key="garcom.id", ondelete="RESTRICT", index=True
+        gt=0,
+        le=MAXIMO_ID,
+        foreign_key="garcom.id",
+        ondelete="RESTRICT",
+        index=True,
     )
     observacao: str | None = Field(default=None, min_length=1, max_length=300)
 
@@ -321,7 +333,7 @@ class PedidoPagina(SQLModel):
 
 
 class PedidoUpdate(DadosValidados):
-    garcom_id: int | None = Field(default=None, gt=0)
+    garcom_id: int | None = Field(default=None, gt=0, le=MAXIMO_ID)
     # Nulo é aceito em observacao para permitir limpar o texto.
     observacao: str | None = Field(default=None, min_length=1, max_length=300)
 
@@ -337,16 +349,24 @@ class PedidoUpdate(DadosValidados):
 
 
 class ItemPedidoCreate(DadosValidados):
-    produto_id: int = Field(gt=0)
+    produto_id: int = Field(gt=0, le=MAXIMO_ID)
     quantidade: StrictInt = Field(gt=0, le=10_000)
 
 
 class ItemPedidoBase(ItemPedidoCreate):
     pedido_id: int = Field(
-        gt=0, foreign_key="pedido.id", ondelete="RESTRICT", index=True
+        gt=0,
+        le=MAXIMO_ID,
+        foreign_key="pedido.id",
+        ondelete="RESTRICT",
+        index=True,
     )
     produto_id: int = Field(
-        gt=0, foreign_key="produto.id", ondelete="RESTRICT", index=True
+        gt=0,
+        le=MAXIMO_ID,
+        foreign_key="produto.id",
+        ondelete="RESTRICT",
+        index=True,
     )
     preco_unitario_centavos: StrictInt = Field(gt=0, le=2_147_483_647)
 
@@ -392,7 +412,11 @@ class ItemPedidoUpdate(DadosValidados):
 
 class FechamentoContaBase(DadosValidados):
     pedido_id: int = Field(
-        gt=0, foreign_key="pedido.id", ondelete="RESTRICT", unique=True
+        gt=0,
+        le=MAXIMO_ID,
+        foreign_key="pedido.id",
+        ondelete="RESTRICT",
+        unique=True,
     )
     total_centavos: StrictInt = Field(
         gt=0, le=9_223_372_036_854_775_807, sa_type=BigInteger

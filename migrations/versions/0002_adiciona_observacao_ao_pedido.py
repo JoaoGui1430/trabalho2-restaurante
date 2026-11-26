@@ -16,16 +16,17 @@ depends_on = None
 
 def upgrade():
     # Coluna opcional: os pedidos já existentes ficam com observacao nula.
-    with op.batch_alter_table("pedido") as batch_op:
-        batch_op.add_column(
-            sa.Column(
-                "observacao",
-                sqlmodel.sql.sqltypes.AutoString(length=300),
-                nullable=True,
-            )
-        )
+    op.add_column(
+        "pedido",
+        sa.Column(
+            "observacao",
+            sqlmodel.sql.sqltypes.AutoString(length=300),
+            nullable=True,
+        ),
+    )
 
 
 def downgrade():
-    with op.batch_alter_table("pedido") as batch_op:
-        batch_op.drop_column("observacao")
+    # ALTER TABLE preserva as referências de itens e fechamentos no SQLite.
+    # DROP COLUMN está disponível a partir do SQLite 3.35.
+    op.drop_column("pedido", "observacao")
