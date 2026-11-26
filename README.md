@@ -7,7 +7,7 @@ João Guilherme Gadelha Abreu de Souza e Pedro Henrique Sampaio de Sousa.
 
 A API gerencia categorias, produtos, mesas, garçons e pedidos. Registra itens com preços históricos, controla o preparo, calcula a conta e encerra o atendimento com preservação dos valores vendidos.
 
-As etapas 1 a 10 estão implementadas. A estrutura inicial é criada pelo Alembic. PostgreSQL é o banco principal, e SQLite é a alternativa configurável.
+Todos os requisitos F1 a F18 estão implementados. A estrutura é criada e evoluída pelo Alembic, e o povoamento de demonstração é feito por script. PostgreSQL é o banco principal, e SQLite é a alternativa configurável.
 
 | Requisito | Situação nesta versão |
 |---|---|
@@ -22,11 +22,11 @@ As etapas 1 a 10 estão implementadas. A estrutura inicial é criada pelo Alembi
 | F9, filtros | Implementado em `GET /pedidos/` com seis critérios combináveis, aplicados na consulta ao banco. |
 | F10, três consultas relacionadas | Implementado em `/categorias/{id}/produtos`, `/mesas/{id}/pedidos` e `/pedidos/{id}/itens`. |
 | F11, duas consultas complexas | Implementado em `/relatorios/produtos-mais-vendidos` e `/relatorios/faturamento-diario`. |
-| F12, estatísticas | Pendente, etapa 13. |
+| F12, estatísticas | Implementado em `GET /estatisticas/`, com agregações feitas no banco. |
 | F13, regras de negócio | Implementadas no fluxo de venda e atendimento. |
-| F14, evolução com Alembic | Parcial. A versão inicial está pronta. A evolução estrutural será feita na etapa 14. |
+| F14, evolução com Alembic | Implementado. A revisão `0002` adiciona `observacao` a `pedido` sobre um banco já povoado, sem perder registros. |
 | F15, PostgreSQL e SQLite | Implementado e conferido nos dois bancos. |
-| F16, povoamento | Pendente, etapa 15. |
+| F16, povoamento | Implementado em `python -m app.povoamento`, repetível e sem apagar dados. |
 | F17, função específica do restaurante | Implementado o fluxo de itens, total, preparo e fechamento, descrito abaixo. |
 | F18, tratamento de erros | Implementado para entrada, vínculos, regras, integridade e falhas de conexão/persistência. |
 
@@ -41,19 +41,25 @@ trabalho2_restaurante/
 │   ├── main.py
 │   ├── database.py
 │   ├── models.py
+│   ├── povoamento.py
 │   └── routers/
 │       ├── categorias.py
 │       ├── produtos.py
 │       ├── mesas.py
 │       ├── garcons.py
-│       └── pedidos.py
+│       ├── pedidos.py
+│       ├── relatorios.py
+│       └── estatisticas.py
 ├── migrations/
 │   ├── env.py
 │   ├── script.py.mako
 │   └── versions/
+├── tests/
 ├── .env.example
 ├── alembic.ini
+├── pytest.ini
 ├── requirements.txt
+├── requirements-dev.txt
 └── README.md
 ```
 
@@ -67,7 +73,7 @@ Tabelas e schemas Base/Create/Public/Update ficam em `models.py`, seguindo as au
 | Produto | Manter descrição, preço atual, disponibilidade e vínculo com categoria. |
 | Mesa | Identificar número, capacidade e habilitação para atendimento. |
 | Garcom | Identificar matrícula e responsável pelo atendimento. |
-| Pedido | Agrupar atendimento, modalidade, situação e datas. |
+| Pedido | Agrupar atendimento, modalidade, situação, datas e uma observação opcional. |
 | ItemPedido | Relacionar pedido e produto com quantidade, preço aplicado e preparo. |
 | FechamentoConta | Consolidar o valor e a data de uma conta finalizada. |
 
@@ -145,9 +151,35 @@ Com a conexão selecionada, aplique a estrutura inicial e inicie a API.
 
 Abra a [documentação Swagger](http://127.0.0.1:8000/docs), a [rota inicial](http://127.0.0.1:8000/) ou o [OpenAPI](http://127.0.0.1:8000/openapi.json). Use Ctrl+C para encerrar o servidor.
 
-As tabelas são criadas pela migração. Novas alterações estruturais terão novas revisões Alembic. A migração inicial sozinha prepara parte de F14, cuja evolução ainda será implementada.
+As tabelas são criadas pela migração. Novas alterações estruturais terão novas revisões Alembic.
 
-O povoamento automático será acrescentado na etapa 15. Nesta versão, os registros podem ser cadastrados pelo Swagger.
+| Revisão | Alteração |
+|---|---|
+| `0001` | Estrutura inicial com as sete tabelas, restrições e índices. |
+| `0002` | Adiciona a coluna opcional `observacao` (até 300 caracteres) a `pedido`. Os pedidos existentes ficam com o valor nulo. |
+
+A `0002` foi aplicada sobre um banco da `0001` que já tinha registros, e eles foram preservados. O `alembic downgrade 0001` desfaz a alteração. No SQLite, a alteração usa o modo batch do Alembic.
+
+## Povoamento
+
+Com a estrutura aplicada (`alembic upgrade head`), carregue os dados de demonstração.
+
+```powershell
+.\.venv\Scripts\python.exe -m app.povoamento
+```
+
+| Entidade | Dados criados |
+|---|---|
+| Categoria | 4 (entradas, pratos principais, bebidas e sobremesas). |
+| Produto | 14, com um indisponível (torta de limão). |
+| Mesa | 9, com uma inativa. |
+| Garçom | 4, com um inativo. |
+| Pedido | 51: 45 finalizados em 21 dias (com 45 fechamentos), 3 cancelados e 3 abertos (duas mesas e uma retirada). |
+| ItemPedido | Cerca de 120 linhas, com itens pendentes, em preparo e prontos. |
+
+Os pedidos mais antigos usam os preços anteriores de alguns produtos (por exemplo, bife acebolado e cerveja), o que mostra o preço histórico nas consultas e nos relatórios. Parte dos pedidos tem observação.
+
+O script não apaga nada. Cadastros são identificados pela chave única de cada entidade, e os que já existem são mantidos. Os pedidos só são criados quando a tabela de pedidos está vazia. Repetir o comando não duplica registros. Se o banco ainda não estiver na última revisão, o script avisa e não grava nada. Os dados são gravados em uma única transação.
 
 ## Endpoints disponíveis
 
@@ -164,7 +196,7 @@ O povoamento automático será acrescentado na etapa 15. Nesta versão, os regis
 | `/garcons/` | POST cadastra e GET lista. |
 | `/garcons/{id}` | GET consulta, PATCH atualiza e DELETE desativa. |
 | `/pedidos/` | POST abre e GET lista com paginação (`offset`, padrão 0, e `limit`, padrão 20, máximo 100). A resposta traz `total`, `offset`, `limit` e `itens`. |
-| `/pedidos/{id}` | GET detalha, PATCH troca o responsável e DELETE cancela. |
+| `/pedidos/{id}` | GET detalha, PATCH troca o responsável ou altera a observação (`null` limpa o texto) e DELETE cancela. |
 | `/pedidos/{id}/itens` | POST inclui produto e quantidade, e GET lista os itens com os dados dos produtos. |
 | `/pedidos/{id}/itens/{item_id}` | PATCH reduz quantidade e DELETE remove item elegível. |
 | `/pedidos/{id}/itens/{item_id}/iniciar-preparo` | POST inicia o preparo. |
@@ -172,6 +204,7 @@ O povoamento automático será acrescentado na etapa 15. Nesta versão, os regis
 | `/pedidos/{id}/finalizar` | POST fecha a conta e encerra o atendimento. |
 | `/relatorios/produtos-mais-vendidos` | GET ranking de produtos por quantidade vendida no período. |
 | `/relatorios/faturamento-diario` | GET faturamento e quantidade de contas por dia no período. |
+| `/estatisticas/` | GET estatísticas gerais: pedidos por situação, faturamento e ticket médio. |
 
 As listagens retornam os registros ordenados, e a de pedidos é paginada e filtrável. Os filtros de `GET /pedidos/` podem ser combinados entre si e com a paginação, e o `total` considera os filtros aplicados.
 
@@ -192,7 +225,36 @@ Os dois relatórios usam apenas contas finalizadas. Pedidos abertos e cancelados
 | `produtos-mais-vendidos` | Soma a quantidade por produto e o valor pelos preços aplicados em cada linha. Ordena da maior para a menor quantidade, desempatando por nome. `limite` define o tamanho do ranking, de 1 a 100, com padrão 10. |
 | `faturamento-diario` | Soma o total dos fechamentos por dia, sem passar pelos itens, para não multiplicar valores. Dias sem vendas aparecem com zero. |
 
-As estatísticas gerais estão previstas na etapa 13.
+## Estatísticas
+
+`GET /estatisticas/` consolida toda a base e não recebe parâmetros. As contagens e somas são feitas no banco.
+
+| Campo | Cálculo |
+|---|---|
+| `total_pedidos` | Soma dos pedidos de todas as situações. |
+| `pedidos_por_status` | Quantidade de `aberto`, `finalizado` e `cancelado`, com zero quando não há pedidos na situação. |
+| `contas_finalizadas` | Quantidade de fechamentos de conta. |
+| `faturamento_centavos` | Soma dos totais dos fechamentos. Pedidos abertos e cancelados não entram. |
+| `ticket_medio_centavos` | Faturamento dividido pelas contas finalizadas, arredondado para o centavo mais próximo. Vale zero sem contas. |
+
+Com a base povoada, a resposta tem 51 pedidos (45 finalizados, 3 cancelados e 3 abertos).
+
+## Testes
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m pytest
+```
+
+Os testes criam um SQLite temporário com as migrações do Alembic e não tocam no banco do `.env`. Cobrem o preço histórico, o total, o fechamento e o cancelamento, a ocupação de mesa, o bloqueio de pedidos encerrados, a paginação, os filtros, os relatórios e as estatísticas conferidos contra cálculos independentes, a repetição do povoamento e a evolução da migração `0002` sobre dados existentes.
+
+Para repetir a suíte em PostgreSQL, informe um banco **exclusivo para testes** em `TESTE_DATABASE_URL`. Cada teste apaga todos os registros ao terminar, então nunca aponte para o banco de uso real.
+
+```powershell
+$env:TESTE_DATABASE_URL = 'postgresql+psycopg://usuario:senha@127.0.0.1:5432/restaurante_teste'
+.\.venv\Scripts\python.exe -m pytest
+Remove-Item Env:TESTE_DATABASE_URL
+```
 
 ## Regras e função específica do tema
 
