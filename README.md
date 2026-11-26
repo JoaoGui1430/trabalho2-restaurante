@@ -17,7 +17,7 @@ Todos os requisitos F1 a F18 estão implementados. A estrutura é criada e evolu
 | F4, atualização | Implementado nos campos permitidos pelo domínio. |
 | F5, exclusão/desativação | Cadastros são desativados, itens pendentes podem ser removidos e pedidos podem ser cancelados. |
 | F6, relacionamentos | 1:1, 1:N e N:N mapeados e usados nas operações. |
-| F7, CRUD routers | Cinco routers de recursos principais registrados. |
+| F7, CRUD routers | Cinco routers de recursos principais registrados, além dos routers de relatórios e estatísticas. |
 | F8, paginação | Implementado em `GET /pedidos/` com `offset` e `limit`, aplicados na consulta ao banco. |
 | F9, filtros | Implementado em `GET /pedidos/` com seis critérios combináveis, aplicados na consulta ao banco. |
 | F10, três consultas relacionadas | Implementado em `/categorias/{id}/produtos`, `/mesas/{id}/pedidos` e `/pedidos/{id}/itens`. |
@@ -99,35 +99,90 @@ IDs recebidos pela API vão de 1 a 2.147.483.647, compatíveis com as chaves INT
 
 ## Instalação
 
-Abra o terminal nesta pasta, onde estão `requirements.txt` e `alembic.ini`.
+### Pré-requisitos
+
+As instruções abaixo usam **Windows e PowerShell**. No VS Code, selecione PowerShell no menu do terminal. O ambiente de desenvolvimento foi conferido com Python 3.14.3 e PostgreSQL 18.6.
+
+1. Instale [Python para Windows](https://www.python.org/downloads/windows/), versão 3.12 ou superior. No instalador tradicional, habilite a opção de adicionar Python ao PATH. Abra um terminal novo depois da instalação e confira `python --version`. Se a instalação disponibilizar apenas `py`, use `py -m venv .venv` na criação do ambiente abaixo.
+2. Para usar o banco principal, instale [PostgreSQL para Windows](https://www.postgresql.org/download/windows/). A versão 18 foi usada no desenvolvimento. Inclua o servidor e as ferramentas de linha de comando (`psql`); o pgAdmin pode ser usado como alternativa gráfica. Anote a senha definida para o usuário `postgres` e a porta escolhida, normalmente `5432`.
+3. Deixe o servidor PostgreSQL em execução. Se ele estiver parado, abra o aplicativo Serviços do Windows e inicie o serviço da instalação PostgreSQL. É possível verificar sua situação no PowerShell com `Get-Service *postgres*`.
+4. Tenha acesso à internet para baixar as dependências. SQLite já é disponibilizado pelo Python e pode ser escolhido como alternativa, sem instalar o servidor PostgreSQL.
+
+### Obter o projeto
+
+Baixe e extraia o ZIP do repositório, ou, se tiver Git instalado, execute:
+
+```powershell
+git clone https://github.com/JoaoGui1430/trabalho2-restaurante.git
+cd trabalho2-restaurante
+```
+
+Abra o terminal na raiz do projeto, onde estão `requirements.txt` e `alembic.ini`. Os arquivos `.venv`, `.env` e os bancos locais são preparados em cada máquina.
+
+### Criar o ambiente e instalar as dependências
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+Os comandos de execução deste README usam diretamente o Python da `.venv`, então a ativação do ambiente é opcional.
+
+### Preparar a configuração
+
+Na primeira instalação, crie o arquivo `.env` a partir do exemplo:
+
+```powershell
 Copy-Item .env.example .env
 ```
 
-Edite `.env` com a conexão do seu ambiente. Ele é carregado por caminho relativo ao projeto. Uma variável `DATABASE_URL` definida no terminal tem precedência sobre o arquivo.
+Edite `.env` conforme o banco escolhido nas próximas seções. Ele é carregado a partir da raiz do projeto. Uma variável `DATABASE_URL` definida no terminal tem precedência sobre o arquivo. O exemplo contém marcadores de usuário e senha, que devem ser substituídos pelos dados reais da instalação.
 
 ## PostgreSQL
 
-Com o PostgreSQL em execução e um usuário autorizado a criar bancos, prepare a base pelo psql. Informe a senha quando solicitada.
+Com o PostgreSQL em execução, crie o banco vazio pelo `psql`, usando o usuário administrativo `postgres` criado na instalação. Informe a senha quando solicitada. O comando usa a porta padrão `5432`; ajuste-a se escolheu outra porta.
 
 ```powershell
 psql -h 127.0.0.1 -p 5432 -U postgres -d postgres -c "CREATE DATABASE restaurante;"
 ```
 
-Configure o `.env` com usuário, senha, host, porta e banco válidos.
+Se `psql` não for reconhecido, execute pelo caminho completo. Para PostgreSQL 18 instalado no diretório padrão:
 
-```dotenv
-DATABASE_URL=postgresql+psycopg://usuario:senha@127.0.0.1:5432/restaurante
+```powershell
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h 127.0.0.1 -p 5432 -U postgres -d postgres -c "CREATE DATABASE restaurante;"
 ```
 
-Caracteres especiais da senha precisam ser codificados para uso em URL. Use um usuário com permissão sobre o banco. A instalação local desta máquina tem uma instância isolada na porta 55432, com a conexão já registrada no `.env` local.
+Ajuste o diretório se instalou outra versão ou escolheu outro local. Como alternativa, no pgAdmin conecte ao servidor com o usuário `postgres`, abra o Query Tool do banco administrativo `postgres` e execute separadamente, com Auto-commit habilitado:
+
+```sql
+CREATE DATABASE restaurante;
+```
+
+Escolha uma das formas acima para criar o banco. Se `restaurante` já existir por uma configuração anterior deste projeto, use esse banco e continue para as migrações.
+
+Configure o `.env` com os dados da mesma instalação. O exemplo abaixo usa o usuário `postgres`, que criou o banco, e a porta padrão. Substitua `SUA_SENHA` pela senha desse usuário:
+
+```dotenv
+DATABASE_URL=postgresql+psycopg://postgres:SUA_SENHA@127.0.0.1:5432/restaurante
+```
+
+Caracteres especiais da senha precisam ser codificados para uso em URL. Por exemplo, `@` vira `%40`, `#` vira `%23` e `%` vira `%25`. A senha `Minha@Senha` seria escrita como `Minha%40Senha` na URL; no pedido de senha do `psql`, informe a senha original.
+
+Se preferir outro usuário, ele deve ter permissão para conectar ao banco, criar e alterar tabelas, índices e restrições pelas migrações, e consultar e modificar os dados da aplicação. A porta `55432` usada em uma instância isolada do desenvolvimento é específica daquele ambiente. Em outra máquina, use a porta da própria instalação.
+
+O `CREATE DATABASE` cria a base vazia. As tabelas serão criadas por `alembic upgrade head`; não é necessário criá-las manualmente.
 
 ## SQLite
 
-Para selecionar SQLite no terminal atual, use a configuração abaixo. Ela substitui a seleção do `.env` durante essa sessão.
+Para usar SQLite, substitua a linha ativa de `DATABASE_URL` no `.env` por:
+
+```dotenv
+DATABASE_URL=sqlite:///./restaurante.db
+```
+
+Mantenha apenas uma definição ativa de `DATABASE_URL` no arquivo. O arquivo `restaurante.db` será criado na raiz quando as migrações forem aplicadas. Não é necessário criar um banco previamente ou instalar um servidor SQLite.
+
+Para selecionar SQLite apenas no terminal atual, use a configuração abaixo. Ela substitui a seleção do `.env` durante essa sessão.
 
 ```powershell
 $env:DATABASE_URL = 'sqlite:///./restaurante.db'
@@ -137,7 +192,7 @@ Quando `DATABASE_URL` está ausente no ambiente e no `.env`, a aplicação tamb�
 
 A reversão da migração `0002` usa `ALTER TABLE DROP COLUMN` e requer SQLite 3.35 ou superior. A conferência local foi realizada com SQLite 3.50.4 e PostgreSQL 18.6.
 
-Para voltar à configuração do `.env` no terminal, execute o comando abaixo e reinicie a API.
+Para remover a seleção temporária e voltar à configuração do `.env`, execute o comando abaixo e reinicie a API. Se também alterou o arquivo, restaure nele a URL do PostgreSQL quando quiser retornar a esse banco.
 
 ```powershell
 Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
@@ -145,24 +200,25 @@ Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
 
 ## Migrações e execução
 
-Com a conexão selecionada, aplique a estrutura inicial e inicie a API.
+Depois de configurar o banco escolhido, execute na raiz do projeto, nesta ordem:
 
 ```powershell
 .\.venv\Scripts\python.exe -m alembic upgrade head
 .\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m app.povoamento
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-Abra a [documentação Swagger](http://127.0.0.1:8000/docs), a [rota inicial](http://127.0.0.1:8000/) ou o [OpenAPI](http://127.0.0.1:8000/openapi.json). Use Ctrl+C para encerrar o servidor.
+O `current` deve indicar `0002 (head)`. O povoamento prepara os dados antes de iniciar o servidor. Aguarde a mensagem `Application startup complete` e abra a [documentação Swagger](http://127.0.0.1:8000/docs), a [rota inicial](http://127.0.0.1:8000/) ou o [OpenAPI](http://127.0.0.1:8000/openapi.json). O terminal fica ocupado pelo Uvicorn enquanto o servidor estiver rodando. Use Ctrl+C para encerrá-lo.
 
-As tabelas são criadas pela migração. Novas alterações estruturais terão novas revisões Alembic.
+As tabelas são criadas pela migração. Novas alterações estruturais terão novas revisões Alembic. Em um banco já atualizado, `upgrade head` não reaplica as revisões concluídas. Ao trocar PostgreSQL por SQLite, ou o contrário, execute as migrações e o povoamento também no banco selecionado. A troca da URL não transfere dados entre os bancos.
 
 | Revisão | Alteração |
 |---|---|
 | `0001` | Estrutura inicial com as sete tabelas, restrições e índices. |
 | `0002` | Adiciona a coluna opcional `observacao` (até 300 caracteres) a `pedido`. Os pedidos existentes ficam com o valor nulo. |
 
-A `0002` foi aplicada sobre um banco da `0001` que já tinha registros, e eles foram preservados. O `alembic downgrade 0001` desfaz a alteração. No SQLite, a alteração usa o modo batch do Alembic.
+A `0002` foi aplicada sobre um banco da `0001` que já tinha registros, e eles foram preservados. Seu `upgrade` usa `op.add_column`, e seu `downgrade` usa `op.drop_column`, com `ALTER TABLE` nativo nos dois bancos. O `alembic downgrade 0001` remove a coluna `observacao`, perdendo os textos armazenados nela e preservando os demais registros e vínculos. Para demonstrar a reversão, use um banco separado de demonstração.
 
 ## Povoamento
 
@@ -185,7 +241,7 @@ O povoamento preserva a situação dos cadastros existentes. Para criar os pedid
 
 Os pedidos mais antigos usam os preços anteriores de alguns produtos (por exemplo, bife acebolado e cerveja), o que mostra o preço histórico nas consultas e nos relatórios. Parte dos pedidos tem observação.
 
-O script não apaga nada. Cadastros são identificados pela chave única de cada entidade, e os que já existem são mantidos. Os pedidos só são criados quando a tabela de pedidos está vazia. Repetir o comando não duplica registros. Se o banco ainda não estiver na última revisão, o script avisa e não grava nada. Os dados são gravados em uma única transação.
+O script não apaga nada. Cadastros existentes são encontrados pelos critérios de identificação do povoamento: nome da categoria, nome e categoria do produto, número da mesa e matrícula do garçom. Nome e categoria do produto são um critério de busca do script, sem uma restrição UNIQUE composta no banco. Os pedidos só são criados quando a tabela de pedidos está vazia. Repetir o comando não duplica os dados de demonstração. Se o banco ainda não estiver na última revisão, o script avisa e não grava nada. Os dados são gravados em uma única transação.
 
 ## Endpoints disponíveis
 
@@ -286,10 +342,6 @@ A API retorna 201 na criação, 200 na leitura e atualização, 204 na desativa�
 Falhas de integridade recebem resposta controlada e rollback. Falhas de conexão ou persistência recebem HTTP 500 com mensagem compreensível. No PostgreSQL, alterações de atendimento usam bloqueios de linha. No SQLite, as escritas usam BEGIN IMMEDIATE. O índice de ocupação e a unicidade do fechamento complementam essas transações.
 
 ## Referências
-
-A organização deriva da clínica SQLModel das aulas 11 a 13 e das migrações da aula 14, consultadas no commit `04706d64181c1ad33d2ef0494f79093dc59b92fd`.
-
-[Material de implementação do professor](https://github.com/pinheirovictor/2026.2_QXD0099_persistencia/tree/04706d64181c1ad33d2ef0494f79093dc59b92fd)
 
 O uso de sessão por dependência e o controle de transações SQLite também seguem a documentação técnica das bibliotecas.
 
