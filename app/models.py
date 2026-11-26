@@ -233,6 +233,7 @@ class PedidoBase(DadosValidados):
     garcom_id: int = Field(
         gt=0, foreign_key="garcom.id", ondelete="RESTRICT", index=True
     )
+    observacao: str | None = Field(default=None, min_length=1, max_length=300)
 
 
 class Pedido(PedidoBase, table=True):
@@ -321,6 +322,8 @@ class PedidoPagina(SQLModel):
 
 class PedidoUpdate(DadosValidados):
     garcom_id: int | None = Field(default=None, gt=0)
+    # Nulo é aceito em observacao para permitir limpar o texto.
+    observacao: str | None = Field(default=None, min_length=1, max_length=300)
 
     @field_validator("garcom_id", mode="before")
     @classmethod
@@ -442,3 +445,20 @@ class FaturamentoDia(SQLModel):
     data: date
     quantidade_contas: int
     faturamento_centavos: int
+
+
+# Estatísticas
+
+
+class PedidosPorStatus(SQLModel):
+    aberto: int
+    finalizado: int
+    cancelado: int
+
+
+class Estatisticas(SQLModel):
+    total_pedidos: int
+    pedidos_por_status: PedidosPorStatus
+    contas_finalizadas: int
+    faturamento_centavos: int
+    ticket_medio_centavos: int

@@ -200,7 +200,8 @@ def atualizar_pedido(
             status_code=422, detail="Informe ao menos um campo para atualizar."
         )
 
-    buscar_garcom_ativo(valores["garcom_id"], session)
+    if "garcom_id" in valores:
+        buscar_garcom_ativo(valores["garcom_id"], session)
     pedido = buscar_pedido_aberto(pedido_id, session)
     pedido.sqlmodel_update(valores)
     session.add(pedido)
